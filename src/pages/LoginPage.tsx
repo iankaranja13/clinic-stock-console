@@ -1,5 +1,5 @@
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,8 +9,12 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const { login } = useAuth()
+  const { login, status } = useAuth()
   const navigate = useNavigate()
+
+  if (status === 'authenticated') {
+    return <Navigate to="/" replace />
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
