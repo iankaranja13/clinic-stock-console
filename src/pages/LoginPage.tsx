@@ -1,4 +1,4 @@
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
@@ -11,9 +11,14 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
   const { login, status } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const from = (location.state as { from?: Location })?.from?.pathname
+    ? `${(location.state as { from: Location }).from.pathname}${(location.state as { from: Location }).from.search}`
+    : '/'
 
   if (status === 'authenticated') {
-    return <Navigate to="/" replace />
+    return <Navigate to={from} replace />
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -22,7 +27,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login(username, password)
-      navigate('/')
+      navigate(from, { replace: true })
     } catch {
       setError('Invalid username or password')
     } finally {
