@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useStockListParams } from '@/hooks/useStockListParams'
 import { useProducts } from '@/hooks/useProducts'
 import { useCategories } from '@/hooks/useCategories'
+import { useAuth } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -48,6 +49,7 @@ export function StockListPage() {
   })
 
   const { data: categories } = useCategories()
+  const { logout } = useAuth()
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
   const currentSortValue = `${sortBy}-${order}`
@@ -56,6 +58,9 @@ export function StockListPage() {
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Stock</h1>
+        <Button variant="outline" onClick={logout}>
+          Sign out
+        </Button>
       </header>
 
       <div className="flex flex-wrap gap-3">
