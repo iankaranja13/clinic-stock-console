@@ -18,6 +18,8 @@ https://clinic-stock-console-five.vercel.app/
 - **Axios** — HTTP client, with interceptors for auth token attachment and silent refresh
 - **Vitest + React Testing Library** — testing
 
+- **Time spent:** approximately 2 hours over 5 days.
+
 ## Running locally
 
 ```bash
