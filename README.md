@@ -31,7 +31,7 @@ Sign in with any DummyJSON test user, e.g. `emilys` / `emilyspass` (see
 [dummyjson.com/users](https://dummyjson.com/users) for the full list).
 
 **Note:** `npm install` requires `--legacy-peer-deps` (also set permanently via
-`.npmrc` in this repo) — see Known Limitations below for why.
+`.npmrc` in this repo)see Known Limitations below for why.
 
 ## Design decisions
 
