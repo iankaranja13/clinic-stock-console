@@ -72,7 +72,10 @@ export function StockListPage() {
           className="max-w-xs"
         />
 
-        <Select value={category || 'all'} onValueChange={(v) => setCategory(v === 'all' ? '' : v)}>
+        <Select
+          value={category || 'all'}
+          onValueChange={(v) => setCategory(v === 'all' || v === null ? '' : v)}
+        >
           <SelectTrigger className="w-48" aria-label="Filter by category">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
@@ -89,6 +92,7 @@ export function StockListPage() {
         <Select
           value={currentSortValue}
           onValueChange={(v) => {
+            if (v === null) return
             const option = SORT_OPTIONS.find((o) => o.value === v)
             if (option) setSort(option.sortBy, option.order)
           }}
