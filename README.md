@@ -247,3 +247,17 @@ approach per section:
   personal process reflection.
 
 [Additional Section 4 reflection content below/in separate file]
+
+**6. Decision:** Kept pagination for the stock list rather than implementing the
+optional virtualized-scrolling stretch goal.
+**Alternative considered:** Replacing pagination with a virtualized infinite-scroll
+list (e.g. via `@tanstack/react-virtual` + `useInfiniteQuery`).
+**Why:** Virtualization pairs naturally with continuous infinite scroll, not
+page-based navigation — adopting it would mean reworking the URL-based page state
+that satisfies the reload/shared-link requirement (#3) and the filter-change
+page-reset logic (#2), both already implemented and verified. Given the brief's
+explicit instruction not to pursue optional goals at the cost of required
+behaviour, and that clinic staff on patchy tablet connections likely benefit more
+from small, complete, fast-loading pages than from a continuously-fetching scroll,
+pagination was kept as the better fit for this scenario rather than changed purely
+to satisfy the optional goal.
