@@ -261,3 +261,15 @@ behaviour, and that clinic staff on patchy tablet connections likely benefit mor
 from small, complete, fast-loading pages than from a continuously-fetching scroll,
 pagination was kept as the better fit for this scenario rather than changed purely
 to satisfy the optional goal.
+
+## Optional stretch goals
+
+- **Offline/reconnect indicator:** implemented — a banner appears when the browser
+  goes offline (via `navigator.onLine` and the `online`/`offline` window events),
+  addressing the "patchy wifi" scenario from the brief.
+- **Bulk correction of several items at once:** implemented — items can be selected
+  via checkboxes on the stock list, and one stock value applied to all selected
+  items at once, using the same optimistic-update pattern as the single-item
+  correction flow.
+- **Virtualized scrolling of the full 194 items:** not implemented — see decision
+  log entry #6 for the reasoning.
