@@ -8,10 +8,6 @@ assessment brief.
 
 https://clinic-stock-console-five.vercel.app/
 
-## Repository
-
-https://github.com/iankaranja13/clinic-stock-console
-
 ## Tech stack
 
 - **React + TypeScript + Vite** — SPA framework and build tooling
@@ -120,7 +116,7 @@ visual customization was made beyond the generated defaults.
 with search debounced 400ms before being written.
 **Alternative rejected:** Local React state with a "sync to localStorage" fallback
 for restoring state on reload.
-**Why:** A colleague opening a shared link must see the identical view immediately —
+**Why:** A colleague opening a shared link must see the identical view immediately
 only the URL travels with a shared link; localStorage is per-device and can't
 satisfy that. Debouncing the search write avoids firing a new fetch on every
 keystroke while still allowing reload/share to work.
@@ -128,7 +124,7 @@ keystroke while still allowing reload/share to work.
 **2. Decision:** Optimistically update the stock count in the cache immediately on
 save (both the item detail and any matching cached list queries), rolling back on
 failure.
-**Alternative rejected:** Pessimistic — show a spinner, wait for server confirmation
+**Alternative rejected:** Pessimistic show a spinner, wait for server confirmation
 before updating the UI.
 **Why:** DummyJSON's `PUT /products/{id}` doesn't actually persist server-side, so a
 naive refetch-after-save would make a successful-looking edit appear to revert.
@@ -151,7 +147,7 @@ their own.
 **Alternative rejected:** Storing both tokens in `localStorage` for simplicity.
 **Why:** `localStorage` is readable by any script on the page, making it more
 exposed to XSS-based token theft. `sessionStorage` clears when the tab closes and
-is scoped per-tab, reducing that exposure while still surviving a page reload —
+is scoped per-tab, reducing that exposure while still surviving a page reload
 though this does mean a genuinely new tab requires signing in again, a trade-off
 that was proven out during testing.
 
@@ -160,16 +156,16 @@ fixed user pool.
 **Alternative rejected:** Building a self-registration form.
 **Why:** The scenario describes internal clinic staff accessing an existing system,
 not public self-registration, and DummyJSON has no real endpoint to register
-against — only a fixed pool of test users to sign in as. In a real deployment,
+against only a fixed pool of test users to sign in as. In a real deployment,
 accounts for an internal tool like this would more realistically be
 admin-provisioned or backed by organizational SSO rather than open self-signup.
 
 ## Known limitations of the mock API (and what was done about it)
 
-- **DummyJSON's `PUT /products/{id}` does not persist changes server-side** — it
+- **DummyJSON's `PUT /products/{id}` does not persist changes server-side** it
   echoes back the request body as if the update succeeded, but a subsequent `GET`
   does not reflect it. Addressed by treating the optimistic cache update as the
-  source of truth after a successful mutation, rather than refetching to confirm —
+  source of truth after a successful mutation, rather than refetching to confirm
   and by giving both the product-list and single-product queries a `staleTime` and
   `refetchOnMount: false`, since without this React Query's default refetch-on-remount
   behavior would silently pull the stale server value and overwrite a correction the
@@ -179,7 +175,7 @@ admin-provisioned or backed by organizational SSO rather than open self-signup.
   environment, since DummyJSON's mock `PUT` does not realistically fail.
 - **DummyJSON's product data is generic retail content** (electronics, groceries,
   etc.), not literal clinical supplies. Per the brief's explicit instruction, this
-  was used as-is rather than inventing clinical-sounding names — items like
+  was used as-is rather than inventing clinical-sounding names items like
   "headphones" or "apples" stand in for generic stock items.
 - **`eslint-plugin-jsx-a11y` has not yet declared compatibility with ESLint 10** at
   time of writing, causing an npm peer-dependency conflict. Resolved via
@@ -221,7 +217,7 @@ requirements rather than trivial/placeholder coverage:
 
 - **`useDebounce.test.ts`** — confirms the debounce hook returns its initial value
   immediately, does not update before its delay elapses, updates after the delay,
-  and — critically — only ever commits the _final_ value in a rapid sequence of
+  and critically only ever commits the _final_ value in a rapid sequence of
   changes rather than every intermediate one. This is the mechanism that prevents
   the search box from firing a request per keystroke.
 - **`useStockListParams.test.tsx`** — confirms that changing the category filter or
