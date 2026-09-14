@@ -1,73 +1,253 @@
-# React + TypeScript + Vite
+# Clinic Stock Console
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An internal web console for clinic supplies staff to search, filter, and correct
+stock levels. Built against the DummyJSON API as a stand-in data source, per the
+assessment brief.
 
-Currently, two official plugins are available:
+## Live app
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+https://clinic-stock-console-five.vercel.app/
 
-## React Compiler
+## Repository
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+https://github.com/iankaranja13/clinic-stock-console
 
-## Expanding the ESLint configuration
+## Tech stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **React + TypeScript + Vite** — SPA framework and build tooling
+- **React Router** — routing, including a shareable `/items/:id` detail route
+- **TanStack Query (React Query)** — server state, caching, and race-condition handling
+- **shadcn/ui (Base UI variant, Nova preset) + Tailwind CSS v4** — accessible component
+  primitives and styling
+- **Axios** — HTTP client, with interceptors for auth token attachment and silent refresh
+- **Vitest + React Testing Library** — testing
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Running locally
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone https://github.com/iankaranja13/clinic-stock-console.git
+cd clinic-stock-console
+npm install --legacy-peer-deps
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Sign in with any DummyJSON test user, e.g. `emilys` / `emilyspass` (see
+[dummyjson.com/users](https://dummyjson.com/users) for the full list).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+**Note:** `npm install` requires `--legacy-peer-deps` (also set permanently via
+`.npmrc` in this repo) — see Known Limitations below for why.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Design decisions
+
+### Component structure
+
+- **Login screen** — login form, error message area
+- **Stock List screen** (`/`) — filter bar (search input, category dropdown, sort
+  dropdown, all writing to the URL), a card grid of results, pagination controls, and
+  a status wrapper handling loading/empty/error states
+- **Item Detail screen** (`/items/:id`) — item info display, a stock correction form
+  with its own local submitting state, and a status wrapper for the fetch itself
+
+Each piece has a single responsibility: the filter bar only reports intent (via the
+URL), the grid only renders whatever data it's given, and status wrapping is handled
+once per screen rather than duplicated per component.
+
+### State management
+
+State in this app falls into three categories, kept deliberately separate:
+
+- **Server state** (product list, single item, categories) — owned by React Query,
+  which handles caching, loading/error states, and discarding stale responses.
+- **URL state** (search query, category filter, sort order, page number) — kept in
+  the URL query string via `useSearchParams`, so that reloading the page or opening a
+  shared link restores the exact same view. The search input specifically uses local
+  state for instant typing feedback, debounced 400ms before being written to the URL,
+  to avoid firing a request on every keystroke.
+- **Local UI state** (e.g. the "is save button submitting" flag) — plain component
+  state, since it has no meaning beyond the current moment on this device.
+- **Auth tokens** sit outside all three — they're app-wide infrastructure attached to
+  every request via an Axios interceptor, not tied to any specific screen or query.
+  The access token lives in memory only; the refresh token is mirrored to
+  `sessionStorage` so a page reload doesn't force a full re-login, while still
+  clearing when the tab closes (a deliberate security trade-off — see decision log).
+
+### Fetching, caching, and invalidation
+
+- React Query keys product list queries by their full parameter set
+  (`['products', { search, category, sortBy, order, page }]`). Any change to those
+  parameters is a new key; React Query automatically abandons in-flight requests for
+  now-stale keys, which is what prevents a slow, outdated search response from
+  overwriting a newer one (see Requirement #1 below).
+- `placeholderData: keepPreviousData` keeps the previous page's results visible while
+  a new query is in flight, rather than flashing to a loading state on every filter
+  change.
+- Both the products-list and single-product queries use a 30-second `staleTime` and
+  `refetchOnMount: false`. This was added specifically to prevent DummyJSON's
+  non-persistent `PUT` from silently overwriting an optimistic stock correction — see
+  Known Limitations.
+- Stock corrections use an **optimistic update**: the local cache (both the item
+  detail query and any matching entries across cached list queries) is updated
+  immediately on save, with a rollback to a pre-mutation snapshot if the request
+  fails. See decision log for why optimistic was chosen over pessimistic.
+
+### Styling approach
+
+Built with shadcn/ui's Base UI component variant (Nova preset) on top of Tailwind CSS
+v4. Most components (`Button`, `Input`, `Select`, `Card`, `Dialog`, `Skeleton`,
+`Badge`, `Table`) use the library's default styling and behavior as generated by the
+shadcn CLI. `buttonVariants` and `badgeVariants` were extracted into their own files
+to resolve an ESLint `react-refresh` rule conflict (see Known Limitations) — no
+visual customization was made beyond the generated defaults.
+
+### Accessibility approach
+
+- Semantic HTML throughout — native `<button>`, `<label>`, `<input>`, `<nav>`
+  elements rather than styled `<div>`s
+- Every form input has an associated `<label htmlFor="...">`
+- Error messages use `role="alert"`; success messages use `role="status"`, so
+  screen readers announce them immediately
+- No `autoFocus` — removed after `eslint-plugin-jsx-a11y` flagged it, since jumping
+  focus on page load can disorient screen-reader and keyboard users
+- `eslint-plugin-jsx-a11y`'s recommended ruleset is enabled in ESLint, catching
+  issues like missing labels and invalid ARIA usage at lint time
+- Layout tested and usable at 360px width; full app tested for keyboard-only
+  operability (tab order, visible focus states, dropdowns operable via
+  keyboard, Enter-to-submit on forms)
+
+## Decision log
+
+**1. Decision:** Store search/category/sort/page state in the URL query string,
+with search debounced 400ms before being written.
+**Alternative rejected:** Local React state with a "sync to localStorage" fallback
+for restoring state on reload.
+**Why:** A colleague opening a shared link must see the identical view immediately —
+only the URL travels with a shared link; localStorage is per-device and can't
+satisfy that. Debouncing the search write avoids firing a new fetch on every
+keystroke while still allowing reload/share to work.
+
+**2. Decision:** Optimistically update the stock count in the cache immediately on
+save (both the item detail and any matching cached list queries), rolling back on
+failure.
+**Alternative rejected:** Pessimistic — show a spinner, wait for server confirmation
+before updating the UI.
+**Why:** DummyJSON's `PUT /products/{id}` doesn't actually persist server-side, so a
+naive refetch-after-save would make a successful-looking edit appear to revert.
+Updating the local cache directly (with rollback on failure) gives correct-feeling,
+instant behavior despite the mock API's limitation, and stays responsive on the
+slow "patchy wifi" connections described in the scenario.
+
+**3. Decision:** Refresh the access token silently in the background on a 401,
+rather than warning the user before expiry.
+**Alternative rejected:** A "session expiring, click to continue" banner.
+**Why:** The brief requires the user not lose their place or see a blank screen
+when the token expires mid-session (`expiresInMins: 1`). A silent retry-after-refresh
+is invisible to the user; a warning banner would interrupt their task and require
+extra interaction on a device (tablet, patchy wifi) where that's more disruptive.
+Concurrent 401s share a single in-flight refresh request rather than each triggering
+their own.
+
+**4. Decision:** Access token kept in memory only; refresh token mirrored to
+`sessionStorage` rather than `localStorage`.
+**Alternative rejected:** Storing both tokens in `localStorage` for simplicity.
+**Why:** `localStorage` is readable by any script on the page, making it more
+exposed to XSS-based token theft. `sessionStorage` clears when the tab closes and
+is scoped per-tab, reducing that exposure while still surviving a page reload —
+though this does mean a genuinely new tab requires signing in again, a trade-off
+that was proven out during testing.
+
+**5. Decision:** No sign-up flow implemented; only sign-in against DummyJSON's
+fixed user pool.
+**Alternative rejected:** Building a self-registration form.
+**Why:** The scenario describes internal clinic staff accessing an existing system,
+not public self-registration, and DummyJSON has no real endpoint to register
+against — only a fixed pool of test users to sign in as. In a real deployment,
+accounts for an internal tool like this would more realistically be
+admin-provisioned or backed by organizational SSO rather than open self-signup.
+
+## Known limitations of the mock API (and what was done about it)
+
+- **DummyJSON's `PUT /products/{id}` does not persist changes server-side** — it
+  echoes back the request body as if the update succeeded, but a subsequent `GET`
+  does not reflect it. Addressed by treating the optimistic cache update as the
+  source of truth after a successful mutation, rather than refetching to confirm —
+  and by giving both the product-list and single-product queries a `staleTime` and
+  `refetchOnMount: false`, since without this React Query's default refetch-on-remount
+  behavior would silently pull the stale server value and overwrite a correction the
+  moment the user navigated back to a screen.
+- **The rollback-on-failure path is implemented per React Query's standard
+  optimistic-mutation pattern, but not exercised against a genuine failure** in this
+  environment, since DummyJSON's mock `PUT` does not realistically fail.
+- **DummyJSON's product data is generic retail content** (electronics, groceries,
+  etc.), not literal clinical supplies. Per the brief's explicit instruction, this
+  was used as-is rather than inventing clinical-sounding names — items like
+  "headphones" or "apples" stand in for generic stock items.
+- **`eslint-plugin-jsx-a11y` has not yet declared compatibility with ESLint 10** at
+  time of writing, causing an npm peer-dependency conflict. Resolved via
+  `legacy-peer-deps=true` in `.npmrc`, applied consistently both locally and in the
+  Vercel build environment; functionally the plugin works correctly against the new
+  flat config format used here.
+- **shadcn's generated `button.tsx` and `badge.tsx` originally exported a
+  `cva`-based variants function alongside their component**, which conflicts with
+  the `react-refresh/only-export-components` ESLint rule (component files should
+  export only components, so Fast Refresh can reliably preserve state during dev).
+  Fixed by extracting `buttonVariants`/`badgeVariants` into their own files
+  (`button-variants.ts`, `badge-variants.ts`).
+
+## CI/CD
+
+**Live app:** https://clinic-stock-console-five.vercel.app/
+**Deploy trigger:** merging a pull request into `main` (Vercel auto-deploys on push
+to `main`)
+
+**Pipeline (GitHub Actions, `.github/workflows/ci.yml`):** runs on every pull request
+targeting `main`. Two jobs:
+
+- **`checks`** — installs dependencies, then runs, in order: Prettier's
+  `format:check`, ESLint, the Vitest test suite, and a full `tsc -b && vite build`
+  (this last step was added beyond the brief's minimum, since it caught real
+  type errors during development that `npm run lint` alone did not).
+- **`commitlint`** — checks every commit in the PR's range against Conventional
+  Commits rules.
+
+Any of these failing blocks the PR from being merged. Locally, the same formatting,
+linting, and commit-message checks also run automatically via Husky git hooks
+(`pre-commit` and `commit-msg`) before a commit can even be made, so issues are
+caught before they reach GitHub at all.
+
+## Tests
+
+Two files, seven tests total, covering logic specifically tied to tested
+requirements rather than trivial/placeholder coverage:
+
+- **`useDebounce.test.ts`** — confirms the debounce hook returns its initial value
+  immediately, does not update before its delay elapses, updates after the delay,
+  and — critically — only ever commits the _final_ value in a rapid sequence of
+  changes rather than every intermediate one. This is the mechanism that prevents
+  the search box from firing a request per keystroke.
+- **`useStockListParams.test.tsx`** — confirms that changing the category filter or
+  sort order resets pagination to page 1 (preventing the user from being stranded on
+  a now-empty page), while confirming that calling `setPage` directly does not
+  trigger that reset.
+
+## AI usage
+
+AI assistance (Claude) was used throughout this project, under the following
+approach per section:
+
+- **Section 1 (Design):** the initial design draft — component breakdown, state
+  categorization, and decision log — was written independently first, then
+  discussed and pressure-tested with AI to surface edge cases (e.g., where the
+  access token belongs in the server/URL/local state model) before finalizing.
+- **Section 2 (Build):** AI was used for scaffolding boilerplate (hooks, API client
+  structure, component shells), explaining unfamiliar concepts before implementation
+  (React Query's optimistic-update pattern, the search race-condition mechanism,
+  token-refresh interceptor design), and debugging real errors encountered during
+  the build (dependency conflicts, TypeScript build errors not caught by the dev
+  server, a duplicated/lost bit of Select component logic from a manual edit).
+- **Section 3 (Deployment/CI):** AI helped configure the Vercel deployment
+  (including diagnosing a client-side-routing 404 issue and a stale-build-cache
+  issue on Vercel's side) and the GitHub Actions pipeline structure.
+- **Section 4:** written independently, without AI assistance, as it concerns
+  personal process reflection.
+
+[Additional Section 4 reflection content below/in separate file]
