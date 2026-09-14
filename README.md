@@ -302,12 +302,12 @@ judgment there.**
 
 - Choosing to keep pagination rather than reworking the stock list into virtualized
   infinite scroll, even though virtualization more literally matches the optional
-  stretch goal as worded. I judged that reworking already-verified URL-state and
+  stretch goal as worded. I judged that reworking already verified URL-state and
   page-reset logic this late carried more risk than the optional goal was worth,
   and that pagination is arguably a better fit for staff on patchy tablet
   connections regardless.
 - Choosing "one stock value applied to all selected items" over an
-  individually-editable bulk-review panel for the bulk correction feature. Given
+  individually editable bulk-review panel for the bulk correction feature. Given
   the remaining time, I judged the simpler version delivered the core capability
   the brief asked for without the added complexity and risk of a more elaborate
   UI.
