@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStockListParams } from '@/hooks/useStockListParams'
 import { useProducts } from '@/hooks/useProducts'
 import { useCategories } from '@/hooks/useCategories'
 import { useAuth } from '@/hooks/useAuth'
+import { useBulkUpdateStock } from '@/hooks/useBulkUpdateStock'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -50,9 +52,39 @@ export function StockListPage() {
 
   const { data: categories } = useCategories()
   const { logout } = useAuth()
+  const bulkUpdate = useBulkUpdateStock()
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkValue, setBulkValue] = useState('')
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
   const currentSortValue = `${sortBy}-${order}`
+
+  function toggleSelected(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function handleBulkApply() {
+    const newStock = Number(bulkValue)
+    if (Number.isNaN(newStock) || newStock < 0 || selectedIds.size === 0) return
+    bulkUpdate.mutate(
+      { ids: Array.from(selectedIds), newStock },
+      {
+        onSuccess: () => {
+          setSelectedIds(new Set())
+          setBulkValue('')
+        },
+      }
+    )
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -110,6 +142,36 @@ export function StockListPage() {
         </Select>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div
+          role="region"
+          aria-label="Bulk stock correction"
+          className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3"
+        >
+          <span className="text-sm font-medium">
+            {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
+          </span>
+          <label htmlFor="bulkStock" className="sr-only">
+            New stock count for selected items
+          </label>
+          <Input
+            id="bulkStock"
+            type="number"
+            min={0}
+            value={bulkValue}
+            onChange={(e) => setBulkValue(e.target.value)}
+            placeholder="New stock count"
+            className="w-40"
+          />
+          <Button onClick={handleBulkApply} disabled={bulkUpdate.isPending || !bulkValue}>
+            {bulkUpdate.isPending ? 'Applying…' : 'Apply to selected'}
+          </Button>
+          <Button variant="outline" onClick={() => setSelectedIds(new Set())}>
+            Clear selection
+          </Button>
+        </div>
+      )}
+
       {isLoading && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -137,8 +199,19 @@ export function StockListPage() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.products.map((product) => (
-              <Link key={product.id} to={`/items/${product.id}`}>
-                <Card className="h-full space-y-2 p-4 transition-shadow hover:shadow-md">
+              <Card key={product.id} className="h-full space-y-2 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(product.id)}
+                      onChange={() => toggleSelected(product.id)}
+                      aria-label={`Select ${product.title} for bulk correction`}
+                    />
+                    Select
+                  </label>
+                </div>
+                <Link to={`/items/${product.id}`} className="block space-y-2">
                   <img
                     src={product.thumbnail}
                     alt={product.title}
@@ -147,8 +220,8 @@ export function StockListPage() {
                   <p className="font-medium">{product.title}</p>
                   <p className="text-sm text-muted-foreground">{product.category}</p>
                   <p className="text-sm">Stock: {product.stock}</p>
-                </Card>
-              </Link>
+                </Link>
+              </Card>
             ))}
           </div>
 
