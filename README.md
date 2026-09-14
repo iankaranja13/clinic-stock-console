@@ -160,6 +160,20 @@ against only a fixed pool of test users to sign in as. In a real deployment,
 accounts for an internal tool like this would more realistically be
 admin-provisioned or backed by organizational SSO rather than open self-signup.
 
+**6. Decision:** Kept pagination for the stock list rather than implementing the
+optional virtualized-scrolling stretch goal.
+**Alternative considered:** Replacing pagination with a virtualized infinite-scroll
+list (e.g. via `@tanstack/react-virtual` + `useInfiniteQuery`).
+**Why:** Virtualization pairs naturally with continuous infinite scroll, not
+page-based navigation — adopting it would mean reworking the URL-based page state
+that satisfies the reload/shared-link requirement (#3) and the filter-change
+page-reset logic (#2), both already implemented and verified. Given the brief's
+explicit instruction not to pursue optional goals at the cost of required
+behaviour, and that clinic staff on patchy tablet connections likely benefit more
+from small, complete, fast-loading pages than from a continuously-fetching scroll,
+pagination was kept as the better fit for this scenario rather than changed purely
+to satisfy the optional goal.
+
 ## Known limitations of the mock API (and what was done about it)
 
 - **DummyJSON's `PUT /products/{id}` does not persist changes server-side** it
@@ -225,43 +239,6 @@ requirements rather than trivial/placeholder coverage:
   a now-empty page), while confirming that calling `setPage` directly does not
   trigger that reset.
 
-## AI usage
-
-AI assistance (Claude) was used throughout this project, under the following
-approach per section:
-
-- **Section 1 (Design):** the initial design draft — component breakdown, state
-  categorization, and decision log was written independently first, then
-  discussed and pressure-tested with AI to surface edge cases (e.g., where the
-  access token belongs in the server/URL/local state model) before finalizing.
-- **Section 2 (Build):** AI was used for scaffolding boilerplate (hooks, API client
-  structure, component shells), explaining unfamiliar concepts before implementation
-  (React Query's optimistic-update pattern, the search race-condition mechanism,
-  token-refresh interceptor design), and debugging real errors encountered during
-  the build (dependency conflicts, TypeScript build errors not caught by the dev
-  server, a duplicated/lost bit of Select component logic from a manual edit).
-- **Section 3 (Deployment/CI):** AI helped configure the Vercel deployment
-  (including diagnosing a client-side-routing 404 issue and a stale-build-cache
-  issue on Vercel's side) and the GitHub Actions pipeline structure.
-- **Section 4:** written independently, without AI assistance, as it concerns
-  personal process reflection.
-
-[Additional Section 4 reflection content below/in separate file]
-
-**6. Decision:** Kept pagination for the stock list rather than implementing the
-optional virtualized-scrolling stretch goal.
-**Alternative considered:** Replacing pagination with a virtualized infinite-scroll
-list (e.g. via `@tanstack/react-virtual` + `useInfiniteQuery`).
-**Why:** Virtualization pairs naturally with continuous infinite scroll, not
-page-based navigation — adopting it would mean reworking the URL-based page state
-that satisfies the reload/shared-link requirement (#3) and the filter-change
-page-reset logic (#2), both already implemented and verified. Given the brief's
-explicit instruction not to pursue optional goals at the cost of required
-behaviour, and that clinic staff on patchy tablet connections likely benefit more
-from small, complete, fast-loading pages than from a continuously-fetching scroll,
-pagination was kept as the better fit for this scenario rather than changed purely
-to satisfy the optional goal.
-
 ## Optional stretch goals
 
 - **Offline/reconnect indicator:** implemented — a banner appears when the browser
@@ -289,14 +266,12 @@ to satisfy the optional goal.
 - **Section 3 (Deployment/CI):** Used AI to configure the Vercel deployment, debug
   a client-side-routing 404 issue and a stale build/commit issue on Vercel's side,
   and to write the GitHub Actions pipeline.
-- **Section 4:** This reflection.
 
 **2. Which tools did you use?**
 
 No formal spec-driven development or agent workflow framework (Superpowers, GSD,
 Spec Kit, OpenSpec, BMAD) was used. Work was structured step-by-step instead:
-design written first and independently, then built feature-by-feature with AI
-explaining each concept before implementation, testing manually after each piece,
+design written first and independently, then built feature-by-feature ,testing manually after each piece,
 and committing checkpoints throughout.
 
 **3. Give one example where an AI suggestion improved your work. What did you
@@ -304,10 +279,10 @@ prompt it with?**
 
 After noticing that the stock list showed stale numbers after editing an item's
 stock, I described the problem directly ("the stock list shows stale numbers after
-editing an item's stock"). The suggested fix — syncing the optimistic cache update
+editing an item's stock"). The suggested fix was syncing the optimistic cache update
 across all cached list-page queries, not just the single item's detail query, and
 later adding a `staleTime`/`refetchOnMount: false` guard against React Query
-silently refetching stale server data — improved the correctness of the stock
+silently refetching stale server data improved the correctness of the stock
 correction feature beyond what I'd initially built.
 
 **4. Give one example where AI output was wrong, incomplete, or subtly bad, and
@@ -315,7 +290,7 @@ how you caught it.**
 
 While editing the category-filter `<Select>` component, an AI-suggested edit ended
 up scrambling the category filter's logic with a duplicate of the sort filter's
-logic — both ended up reading the sort value instead of the category value. This
+logic both ended up reading the sort value instead of the category value. This
 wasn't caught by `npm run dev` or by TypeScript at first; it only surfaced as a
 build error (`'setCategory' is declared but its value is never read`) when running
 a full `npm run build`. I traced the actual cause by running
@@ -341,7 +316,7 @@ judgment there.**
 us why.**
 
 The optimistic-update and cache-invalidation logic in `useUpdateStock` and
-`useBulkUpdateStock` — specifically the interaction between `staleTime`,
+`useBulkUpdateStock` ,specifically the interaction between `staleTime`,
 `refetchOnMount: false`, and manually patching React Query's cache across multiple
 query keys (`['product', id]` and every matching `['products', params]` entry). I
 understand what each individual setting does, but this combination was arrived at
