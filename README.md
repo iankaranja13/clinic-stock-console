@@ -273,3 +273,78 @@ to satisfy the optional goal.
   correction flow.
 - **Virtualized scrolling of the full 194 items:** not implemented — see decision
   log entry #6 for the reasoning.
+
+## Section 4: AI Reflection
+
+**1. What did you use AI for across the four sections?**
+
+- **Section 1 (Design):** Wrote the initial component breakdown, state
+  categorization, and decision log independently first, then used AI to explain
+  underlying concepts (the server/URL/local state split, race-condition handling)
+  and to pressure-test the reasoning before finalizing.
+- **Section 2 (Build):** Used AI to scaffold the project, generate boilerplate for
+  hooks and components, explain concepts before implementing them (optimistic
+  updates, debounced search, token-refresh interceptors), and to debug real errors
+  encountered along the way.
+- **Section 3 (Deployment/CI):** Used AI to configure the Vercel deployment, debug
+  a client-side-routing 404 issue and a stale build/commit issue on Vercel's side,
+  and to write the GitHub Actions pipeline.
+- **Section 4:** This reflection.
+
+**2. Which tools did you use?**
+
+No formal spec-driven development or agent workflow framework (Superpowers, GSD,
+Spec Kit, OpenSpec, BMAD) was used. Work was structured step-by-step instead:
+design written first and independently, then built feature-by-feature with AI
+explaining each concept before implementation, testing manually after each piece,
+and committing checkpoints throughout.
+
+**3. Give one example where an AI suggestion improved your work. What did you
+prompt it with?**
+
+After noticing that the stock list showed stale numbers after editing an item's
+stock, I described the problem directly ("the stock list shows stale numbers after
+editing an item's stock"). The suggested fix — syncing the optimistic cache update
+across all cached list-page queries, not just the single item's detail query, and
+later adding a `staleTime`/`refetchOnMount: false` guard against React Query
+silently refetching stale server data — improved the correctness of the stock
+correction feature beyond what I'd initially built.
+
+**4. Give one example where AI output was wrong, incomplete, or subtly bad, and
+how you caught it.**
+
+While editing the category-filter `<Select>` component, an AI-suggested edit ended
+up scrambling the category filter's logic with a duplicate of the sort filter's
+logic — both ended up reading the sort value instead of the category value. This
+wasn't caught by `npm run dev` or by TypeScript at first; it only surfaced as a
+build error (`'setCategory' is declared but its value is never read`) when running
+a full `npm run build`. I traced the actual cause by running
+`grep -n "setCategory|onValueChange"` against the file to see exactly what each
+Select was wired to, which revealed the duplication.
+
+**5. Name two decisions you made without AI, and why you trusted your own
+judgment there.**
+
+- Choosing to keep pagination rather than reworking the stock list into virtualized
+  infinite scroll, even though virtualization more literally matches the optional
+  stretch goal as worded. I judged that reworking already-verified URL-state and
+  page-reset logic this late carried more risk than the optional goal was worth,
+  and that pagination is arguably a better fit for staff on patchy tablet
+  connections regardless.
+- Choosing "one stock value applied to all selected items" over an
+  individually-editable bulk-review panel for the bulk correction feature. Given
+  the remaining time, I judged the simpler version delivered the core capability
+  the brief asked for without the added complexity and risk of a more elaborate
+  UI.
+
+**6. Point us at one part of your codebase you would struggle to defend, and tell
+us why.**
+
+The optimistic-update and cache-invalidation logic in `useUpdateStock` and
+`useBulkUpdateStock` — specifically the interaction between `staleTime`,
+`refetchOnMount: false`, and manually patching React Query's cache across multiple
+query keys (`['product', id]` and every matching `['products', params]` entry). I
+understand what each individual setting does, but this combination was arrived at
+through trial-and-error while debugging a real stale-data bug rather than designed
+upfront, so I'd need to think carefully if asked to trace every edge case in how
+they interact.
